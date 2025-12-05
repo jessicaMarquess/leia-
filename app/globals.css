@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Bitcount+Prop+Single:wght@100..900&display=swap");
 @import "tailwindcss";
 
 :root {
@@ -10,6 +11,8 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-bitcount: var(--font-bitcount);
+  --color-gray-170: #111827;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -22,5 +25,35 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* Aplica a fonte Bitcount carregada via Google Fonts */
+  font-family: "Bitcount Prop Single", Arial, Helvetica, sans-serif;
+}
+
+/* Classe utilitária para usar Bitcount apenas em elementos específicos */
+.font-bitcount {
+  font-family: "Bitcount Prop Single", Arial, Helvetica, sans-serif;
+}
+
+/* Scrollbar customizado para modais */
+.overflow-y-auto {
+  scrollbar-width: thin;
+  scrollbar-color: #ec4899 transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar {
+  width: 8px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #ec4899, #f43f5e);
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #f43f5e, #ff1744);
 }
