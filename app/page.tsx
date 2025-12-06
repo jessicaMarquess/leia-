@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import { signOut } from "next-auth/react";
+import React, { useEffect, useState } from "react";
 import {
   FaGithub,
   FaInstagram,
@@ -189,6 +190,11 @@ const monthRanking = [
 
 export default function Home() {
   const [books, setBooks] = useState<Book[]>(initialBooks);
+  const [user, setUser] = useState<{
+    id: number;
+    name: string;
+    email: string;
+  } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBook, setEditingBook] = useState<Book | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -214,6 +220,38 @@ export default function Home() {
     notes: "",
   });
 
+  // Load books from API on mount
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch("/api/books", { cache: "no-store" });
+        if (!res.ok) return; // keep initial fallback silently
+        const data: Book[] = await res.json();
+        if (Array.isArray(data)) setBooks(data);
+      } catch (e) {
+        console.error("Failed to load books", e);
+      }
+    };
+    load();
+  }, []);
+
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const res = await fetch("/api/auth/me", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data && data.authenticated)
+          setUser({ id: data.id, name: data.name, email: data.email });
+      } catch {}
+    };
+    loadUser();
+  }, []);
+
+  const handleLogout = async () => {
+    await signOut({ callbackUrl: "/login" });
+  };
+
   const totalBooks = books.length;
   const completed = books.filter((b) => b.status === "COMPLETADO").length;
   const reading = books.filter((b) => b.status === "LENDO").length;
@@ -232,12 +270,33 @@ export default function Home() {
 
   const convertDateToCompare = (dateStr: string): string => {
     if (!dateStr) return "";
-    // Converte dd/mm/yyyy para yyyy-mm-dd para comparação
-    const [day, month, year] = dateStr.split("/");
-    if (day && month && year) {
+
+    // Already in yyyy-MM-dd format
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return dateStr;
+    }
+
+    // Convert dd/mm/yyyy to yyyy-MM-dd for comparison
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
+      const [day, month, year] = dateStr.split("/");
       return `${year}-${month}-${day}`;
     }
+
     return dateStr;
+  };
+
+  const brToIso = (dateStr: string): string => {
+    if (!dateStr) return "";
+    const [d, m, y] = dateStr.split("/");
+    if (d && m && y) return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+    return dateStr;
+  };
+
+  const isoToBr = (iso: string): string => {
+    if (!iso) return "";
+    const [y, m, d] = iso.split("-");
+    if (y && m && d) return `${d.padStart(2, "0")}/${m.padStart(2, "0")}/${y}`;
+    return iso;
   };
 
   const validateForm = (): boolean => {
@@ -269,8 +328,8 @@ export default function Home() {
       title: book.title,
       author: book.author,
       genre: book.genre,
-      startDate: book.startDate,
-      endDate: book.endDate,
+      startDate: brToIso(book.startDate),
+      endDate: brToIso(book.endDate),
       status: book.status,
       rating: book.rating,
       notes: book.notes,
@@ -295,42 +354,55 @@ export default function Home() {
     setFormErrors({});
   };
 
-  const handleSaveBook = () => {
+  const handleSaveBook = async () => {
     if (!validateForm()) return;
 
     if (editingBook) {
-      // Editar livro existente
-      setBooks(
-        books.map((book) =>
-          book.id === editingBook.id
-            ? {
-                ...book,
-                title: formData.title,
-                author: formData.author,
-                genre: formData.genre,
-                startDate: formData.startDate,
-                endDate: formData.endDate,
-                status: formData.status,
-                rating: formData.rating,
-                notes: formData.notes,
-              }
-            : book
-        )
-      );
+      try {
+        const res = await fetch(`/api/books/${editingBook.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: formData.title,
+            author: formData.author,
+            genre: formData.genre,
+            startDate: isoToBr(formData.startDate),
+            endDate: isoToBr(formData.endDate),
+            status: formData.status,
+            rating: formData.rating,
+            notes: formData.notes,
+          }),
+        });
+        if (!res.ok) throw new Error("Falha ao atualizar livro");
+        const updated: Book = await res.json();
+        setBooks(books.map((b) => (b.id === updated.id ? updated : b)));
+      } catch (e) {
+        console.error(e);
+        return;
+      }
     } else {
-      // Criar novo livro
-      const newBook: Book = {
-        id: Math.max(...books.map((b) => b.id), 0) + 1,
-        title: formData.title,
-        author: formData.author,
-        genre: formData.genre,
-        startDate: formData.startDate,
-        endDate: formData.endDate,
-        status: formData.status,
-        rating: formData.rating,
-        notes: formData.notes,
-      };
-      setBooks([...books, newBook]);
+      try {
+        const res = await fetch(`/api/books`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: formData.title,
+            author: formData.author,
+            genre: formData.genre,
+            startDate: isoToBr(formData.startDate),
+            endDate: isoToBr(formData.endDate),
+            status: formData.status,
+            rating: formData.rating,
+            notes: formData.notes,
+          }),
+        });
+        if (!res.ok) throw new Error("Falha ao criar livro");
+        const created: Book = await res.json();
+        setBooks([...books, created]);
+      } catch (e) {
+        console.error(e);
+        return;
+      }
     }
 
     handleCloseModal();
@@ -363,12 +435,15 @@ export default function Home() {
             <IoBookOutline className="text-pink-500" size={36} />
             leia+
           </h1>
-          <button
-            onClick={() => console.log("Logout")}
-            className="p-2 bg-linear-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white rounded-full transition-all duration-300 transform hover:scale-110 shadow-lg hover:shadow-pink-500/50"
-          >
-            <FiLogOut size={18} />
-          </button>
+          <div className="flex items-center gap-3">
+            {user && <span className="text-sm text-zinc-300">{user.name}</span>}
+            <button
+              onClick={handleLogout}
+              className="p-2 bg-linear-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white rounded-full transition-all duration-300 transform hover:scale-110 shadow-lg hover:shadow-pink-500/50"
+            >
+              <FiLogOut size={18} />
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
@@ -435,7 +510,10 @@ export default function Home() {
         </div>
       </main>
 
-      <footer className="mt-20 border-t border-zinc-700">
+      <footer
+        className="mt-20 border-t border-zinc-700"
+        suppressHydrationWarning
+      >
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-12">
             <div className="flex items-center gap-2">
@@ -872,32 +950,25 @@ function FormField({
   const convertDateForInput = (dateStr: string) => {
     if (!dateStr) return "";
     if (type !== "date") return dateStr;
-    // Converte dd/mm/yyyy para yyyy-MM-dd
-    const [day, month, year] = dateStr.split("/");
-    if (day && month && year) {
+
+    // Check if already in yyyy-MM-dd format
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return dateStr;
+    }
+
+    // Convert dd/mm/yyyy to yyyy-MM-dd
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
+      const [day, month, year] = dateStr.split("/");
       return `${year}-${month}-${day}`;
     }
+
+    // Return as-is if format is unexpected
     return dateStr;
   };
 
   const convertDateFromInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (type !== "date") {
-      onChange(e);
-      return;
-    }
-    // Converte yyyy-MM-dd para dd/mm/yyyy
-    const dateValue = e.target.value;
-    if (dateValue) {
-      const [year, month, day] = dateValue.split("-");
-      const formattedValue = `${day}/${month}/${year}`;
-      const syntheticEvent = {
-        ...e,
-        target: { ...e.target, value: formattedValue },
-      } as React.ChangeEvent<HTMLInputElement>;
-      onChange(syntheticEvent);
-    } else {
-      onChange(e);
-    }
+    // Let the native date value (yyyy-MM-dd) flow to state directly.
+    onChange(e);
   };
 
   return (
@@ -915,7 +986,7 @@ function FormField({
           error
             ? "border-red-500 focus:border-red-500"
             : "border-zinc-600 focus:border-pink-500"
-        } ${type === "date" ? "[color-scheme:dark]" : ""}`}
+        } ${type === "date" ? "scheme-dark" : ""}`}
         style={type === "date" ? { colorScheme: "dark" } : undefined}
       />
       {error && <p className="text-red-400 text-sm mt-1">{error}</p>}
@@ -955,7 +1026,6 @@ function BooksTable({
 
   return (
     <>
-      {/* MOBILE/TABLET VIEW - Cards */}
       <div className="block md:hidden space-y-4">
         {books.map((book) => (
           <div
@@ -972,7 +1042,7 @@ function BooksTable({
                 </div>
                 <button
                   onClick={() => toggleExpand(book.id)}
-                  className="text-pink-400 hover:text-pink-300 transition flex-shrink-0 mt-1"
+                  className="text-pink-400 hover:text-pink-300 transition shrink-0 mt-1"
                 >
                   <span className="text-xs font-semibold">
                     {expandedBookId === book.id ? "Ver menos" : "Ver mais"}
