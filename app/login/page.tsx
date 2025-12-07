@@ -3,6 +3,7 @@
 import { signIn } from "next-auth/react";
 import dynamic from "next/dynamic";
 import { useState } from "react";
+import { GiBookCover } from "react-icons/gi";
 
 function LoginPage() {
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -39,13 +40,17 @@ function LoginPage() {
       className="min-h-screen bg-zinc-900 text-white flex items-center justify-center p-6"
       suppressHydrationWarning
     >
-      <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-6 w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-4">
+      <div className="bg-zinc-800 border border-pink-600 rounded-lg p-6 w-full max-w-md font-mono">
+        <div className="bg-pink-500 text-black text-5xl mb-4 flex justify-center rounded-full size-20 items-center mx-auto">
+          <GiBookCover />
+        </div>
+
+        <h1 className="text-2xl font-bold mb-4 font-mono text-center text-white">
           {mode === "login" ? "Entrar" : "Registrar"}
         </h1>
 
         {mode === "register" && (
-          <div className="mb-3">
+          <div className="mb-3 ">
             <label className="block text-sm mb-1">Nome</label>
             <input
               className="w-full p-3 bg-zinc-700 border border-zinc-600 rounded"
@@ -88,11 +93,17 @@ function LoginPage() {
 
         <div className="mt-4 text-sm text-zinc-300 text-center">
           {mode === "login" ? (
-            <button className="underline" onClick={() => setMode("register")}>
+            <button
+              className="underline cursor-pointer"
+              onClick={() => setMode("register")}
+            >
               Criar conta
             </button>
           ) : (
-            <button className="underline" onClick={() => setMode("login")}>
+            <button
+              className="underline cursor-pointer"
+              onClick={() => setMode("login")}
+            >
               Já tenho conta
             </button>
           )}
