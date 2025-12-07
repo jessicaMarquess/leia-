@@ -48,7 +48,7 @@ function LoginPage() {
           <div className="mb-3">
             <label className="block text-sm mb-1">Nome</label>
             <input
-              className="w-full px-3 py-2 bg-zinc-700 border border-zinc-600 rounded"
+              className="w-full p-3 bg-zinc-700 border border-zinc-600 rounded"
               value={name}
               onChange={(e) => setName(e.target.value)}
               suppressHydrationWarning
