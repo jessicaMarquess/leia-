@@ -35,7 +35,7 @@ export async function POST(req: Request) {
       );
     const passwordHash = await bcrypt.hash(parsed.data.password, 10);
     const now = new Date();
-    const created = db
+    const created = await db
       .insert(schema.users)
       .values({
         name: parsed.data.name,

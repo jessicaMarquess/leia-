@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-const PUBLIC_PREFIXES = ["/login", "/signin", "/api/auth"]; // allow all NextAuth and auth pages
+const PUBLIC_PREFIXES = ["/login", "/signin", "/api/auth", "/api/register"]; // allow NextAuth, auth pages, and custom register
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;

@@ -1,8 +1,10 @@
 import { db } from "@/lib/db";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import bcrypt from "bcryptjs";
+import { eq } from "drizzle-orm";
 import type { NextAuthOptions } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import { users } from "./drizzle/schema";
 
 export const authOptions: NextAuthOptions = {
   adapter: DrizzleAdapter(db),
@@ -32,9 +34,11 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         const email = credentials?.email || "";
         const password = credentials?.password || "";
-        const user = await db.query.users.findFirst({
-          where: (u, { eq }) => eq(u.email, email),
-        });
+        const user = await db
+          .select()
+          .from(users)
+          .where(eq(users.email, email))
+          .then((rows) => rows[0]);
         if (!user) return null;
         const ok = await bcrypt.compare(password, user.passwordHash);
         if (!ok) return null;
